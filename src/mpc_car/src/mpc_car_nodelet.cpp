@@ -59,7 +59,9 @@ class Nodelet : public nodelet::Nodelet {
  public:
   void onInit(void) {
     ros::NodeHandle nh(getMTPrivateNodeHandle());
+    ROS_WARN("1");
     mpcPtr_ = std::make_shared<MpcCar>(nh);
+    ROS_WARN("2");
     double dt = 0;
     nh.getParam("dt", dt);
     nh.getParam("delay", delay_);

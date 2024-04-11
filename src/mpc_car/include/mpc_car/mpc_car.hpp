@@ -14,10 +14,10 @@ static constexpr int m = 2;  // input a varepsilon
 typedef Eigen::Matrix<double, n, n> MatrixA;
 typedef Eigen::Matrix<double, n, m> MatrixB;
 
-typedef Eigen::Matrix<double,5,1> Vector5d;
- 
-typedef Eigen::Matrix<double,5,1> VectorG;
-typedef Eigen::Matrix<double,5,1> VectorX;
+typedef Eigen::Matrix<double, 5, 1> Vector5d;
+
+typedef Eigen::Matrix<double, 5, 1> VectorG;
+typedef Eigen::Matrix<double, 5, 1> VectorX;
 typedef Eigen::Vector2d VectorU;
 
 class MpcCar {
@@ -25,7 +25,7 @@ class MpcCar {
   ros::NodeHandle nh_;
   ros::Publisher ref_pub_, traj_pub_, traj_delay_pub_;
 
-  double L;//将ll_换成了L
+  double L;  // 将ll_换成了L
   double dt_;
   double rho_;
   int N_;
@@ -82,26 +82,26 @@ class MpcCar {
     // x_{k+1} = Ad * x_{k} + Bd * u_k + gd
     // TODO: set values to Ad_, Bd_, gd_
     // ...
-    //set Ad_
-     Ad_ << 1, 0, -v * cos(delta) * sin(phi) * dt_, cos(delta) * cos(phi) * dt_,  -v * cos(phi) * sin(delta) * varepsilon * dt_,
-        0, 1, v * cos(delta) * cos(phi) * dt_, cos(delta) * sin(phi) * dt_,  -v * sin(phi) * sin(delta) * varepsilon * dt_,
+    // set Ad_
+    Ad_ << 1, 0, -v * cos(delta) * sin(phi) * dt_, cos(delta) * cos(phi) * dt_, -v * cos(phi) * sin(delta) * varepsilon * dt_,
+        0, 1, v * cos(delta) * cos(phi) * dt_, cos(delta) * sin(phi) * dt_, -v * sin(phi) * sin(delta) * varepsilon * dt_,
         0, 0, 1, sin(delta) / L * dt_, (v * cos(delta) * varepsilon) / L * dt_,
         0, 0, 0, 1, 0,
         0, 0, 0, 0, 1;
-    
-    //set Bd_
-     Bd_ << 0, 0,
-            0, 0,
-            0, 0,
-            1 * dt_, 0,
-            0, 1 * dt_;
 
-    //set gd_
-    gd_ << v * (phi * sin(phi) * cos(delta) + cos(phi) * delta * sin(delta) * varepsilon) * dt_, 
-           v * (-phi * cos(phi) * cos(delta)  + sin(phi) * delta * sin(delta) * varepsilon )* dt_,
-         -(v * delta * cos(delta) * varepsilon) / L * dt_,
-           0, 
-           0;
+    // set Bd_
+    Bd_ << 0, 0,
+        0, 0,
+        0, 0,
+        1 * dt_, 0,
+        0, 1 * dt_;
+
+    // set gd_
+    gd_ << v * (phi * sin(phi) * cos(delta) + cos(phi) * delta * sin(delta) * varepsilon) * dt_,
+        v * (-phi * cos(phi) * cos(delta) + sin(phi) * delta * sin(delta) * varepsilon) * dt_,
+        -(v * delta * cos(delta) * varepsilon) / L * dt_,
+        0,
+        0;
     return;
   }
 
@@ -132,7 +132,7 @@ class MpcCar {
   //   return ds;
   // }
 
-   inline VectorX diff(const VectorX& state,
+  inline VectorX diff(const VectorX& state,
                       const VectorU& input) const {
     VectorX ds;
     double phi = state(2);
@@ -173,7 +173,7 @@ class MpcCar {
     nh.getParam("desired_v", desired_v_);
     s_.setWayPoints(track_points_x, track_points_y);
     // load parameters
-    nh.getParam("L", L);//L代替ll_
+    nh.getParam("L", L);  // L代替ll_
     nh.getParam("dt", dt_);
     nh.getParam("rho", rho_);
     nh.getParam("N", N_);
@@ -190,6 +190,8 @@ class MpcCar {
     traj_delay_pub_ = nh.advertise<nav_msgs::Path>("traj_delay", 1);
 
     // TODO: set initial value of Ad, Bd, gd
+    ROS_WARN("1.1");
+
     Ad_.setIdentity();  // Ad for instance
     // ...
     Bd_.setZero();  // Bd for instance
@@ -207,7 +209,7 @@ class MpcCar {
     Qx_.coeffRef(N_ * n - 4, N_ * n - 4) = rhoN_;
     Qx_.coeffRef(N_ * n - 3, N_ * n - 3) = rhoN_;
     Qx_.coeffRef(N_ * n - 2, N_ * n - 2) = rhoN_ * rho_;
-    //这里的v a delta ddelta的中delta从input变成了 state了，
+    // 这里的v a delta ddelta的中delta从input变成了 state了，
     int n_cons = 4;  // v a delta ddelta
     A_.resize(n_cons * N_, m * N_);
     l_.resize(n_cons * N_, 1);
@@ -221,9 +223,10 @@ class MpcCar {
     lu_.resize(2 * N_, 1);
     uu_.resize(2 * N_, 1);
     // set lower and upper boundaries
+
     for (int i = 0; i < N_; ++i) {
       // TODO: set stage constraints of inputs (a, delta（这个去掉，放状态里面）, ddelta)
-      //这里注意修改：input的约束(a,  ddelta)
+      // 这里注意修改：input的约束(a,  ddelta)
       // -a_max <= a <= a_max for instance:
       Cu_.coeffRef(i * 2 + 0, i * m + 0) = 1;
       lu_.coeffRef(i * 2 + 0, 0) = -a_max_;
@@ -236,21 +239,23 @@ class MpcCar {
       Cu_.coeffRef(i * 2 + 1, i * m + 1) = 1;
       lu_.coeffRef(i * 2 + 1, 0) = -ddelta_max_ * dt_;
       uu_.coeffRef(i * 2 + 1, 0) = ddelta_max_ * dt_;
-
+      
+      //?bug#001
       if (i != 0) {
-        Cu_.coeffRef(i * 2 + 2, (i - 1) * m + 1) = -1;
+        Cu_.coeffRef(i * 2 + 1, (i - 1) * m + 1) = -1;
       }
+
       // : set stage constraints of states (v和delta）
       // -v_max <= v <= v_max
       // Cx_.coeffRef( ...
       // lx_.coeffRef( ...
       // ux_.coeffRef( ...
-      //这里注意状态的约束：这里v对应是state（3）所以i * n + 3；
+      // 这里注意状态的约束：这里v对应是state（3）所以i * n + 3；
       Cx_.coeffRef(i * 2, i * n + 3) = 1;
       lx_.coeffRef(i * 2, 0) = -0.1;
       ux_.coeffRef(i * 2, 0) = v_max_;
       // -delta_max <= delta <= delta_max
-      //delta对应的是state（4），所以i * n + 4
+      // delta对应的是state（4），所以i * n + 4
       Cx_.coeffRef(i * 2 + 1, i * n + 4) = 1;
       lx_.coeffRef(i * 2 + 1, 0) = -delta_max_;
       ux_.coeffRef(i * 2 + 1, 0) = delta_max_;
@@ -270,7 +275,7 @@ class MpcCar {
     x0_observe_ = x0_observe;
     historyInput_.pop_front();
     historyInput_.push_back(predictInput_.front());
-    //这里看232行代码处更新的ddelta的索引
+    // 这里看232行代码处更新的ddelta的索引
     lu_.coeffRef(1, 0) = predictInput_.front()(1) - ddelta_max_ * dt_;
     uu_.coeffRef(1, 0) = predictInput_.front()(1) + ddelta_max_ * dt_;
     VectorX x0 = compensateDelay(x0_observe_);
@@ -280,7 +285,7 @@ class MpcCar {
     AA.setZero(n * N_, n);
     gg.setZero(n * N_, 1);
     double s0 = s_.findS(x0.head(2));
-    double phi, v,  varepsilon;
+    double phi, v, varepsilon;
     double delta;
     double last_phi = x0(2);
     Eigen::SparseMatrix<double> qx;
@@ -344,7 +349,6 @@ class MpcCar {
       s0 = s0 < s_.arcL() ? s0 : s_.arcL();
     }
     qx = Qx_ * qx;
-
 
     Eigen::SparseMatrix<double> BB_sparse = BB.sparseView();
     Eigen::SparseMatrix<double> AA_sparse = AA.sparseView();
@@ -420,8 +424,8 @@ class MpcCar {
     double delta = state(4);
     double a = input(0);
     double varepsilon = input(1);
-    state(0) += dt * v * cos(phi) *cos(delta);
-    state(1) += dt * v * sin(phi) *cos(delta);
+    state(0) += dt * v * cos(phi) * cos(delta);
+    state(1) += dt * v * sin(phi) * cos(delta);
     state(2) += dt * v / L * sin(delta);
     state(3) += dt * a;
     state(4) += dt * varepsilon;
