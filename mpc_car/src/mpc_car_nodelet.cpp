@@ -20,6 +20,7 @@ class Nodelet : public nodelet::Nodelet {
   void plan_timer_callback(const ros::TimerEvent& event) {
     if (init) {
       ros::Time t1 = ros::Time::now();
+
       auto ret = mpcPtr_->solveQP(state_);
       assert(ret == 1);
       ros::Time t2 = ros::Time::now();
@@ -36,6 +37,7 @@ class Nodelet : public nodelet::Nodelet {
       std::cout << "u: " << u.transpose() << std::endl;
       std::cout << "x: " << x.transpose() << std::endl;
       std::cout << std::endl;
+
       msg.a = u(0);
       msg.varepsilon = u(1);
       cmd_pub_.publish(msg);
@@ -52,7 +54,9 @@ class Nodelet : public nodelet::Nodelet {
                          msg->pose.pose.orientation.z);
     Eigen::Vector3d euler = q.toRotationMatrix().eulerAngles(0, 1, 2);
     Eigen::Vector2d v(msg->twist.twist.linear.x, msg->twist.twist.linear.y);
-    state_ << x, y, euler.z(), v.norm();
+    // bug#002
+    state_ << x, y, euler.z(), v.norm(), msg->twist.twist.linear.z;
+
     init = true;
   }
 
@@ -61,14 +65,16 @@ class Nodelet : public nodelet::Nodelet {
     ros::NodeHandle nh(getMTPrivateNodeHandle());
     ROS_WARN("1");
     mpcPtr_ = std::make_shared<MpcCar>(nh);
-    ROS_WARN("2");
     double dt = 0;
     nh.getParam("dt", dt);
     nh.getParam("delay", delay_);
 
     plan_timer_ = nh.createTimer(ros::Duration(dt), &Nodelet::plan_timer_callback, this);
+
     odom_sub_ = nh.subscribe<nav_msgs::Odometry>("odom", 1, &Nodelet::odom_call_back, this);
+
     cmd_pub_ = nh.advertise<car_msgs::CarCmd>("car_cmd", 1);
+    ROS_WARN("2");
   }
 };
 }  // namespace mpc_car

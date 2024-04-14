@@ -114,8 +114,11 @@ class MpcCar {
     double ddy = ddxy.y();
     double dphi = (ddy * dx - dy * ddx) / (dx * dx + dy * dy);
     phi = atan2(dy, dx);
+    // double y_w = s0.y() + L * sin(phi);
+    // double x_w = s0.x() + L * cos(phi);
     v = desired_v_;
     delta = atan2(L * dphi, 1.0);
+    //varepsilon = (ddy_w * dx_w - dy * ddx) / (dx * dx + dy * dy);
   }
 
   // inline VectorX diff(const VectorX& state,
@@ -161,6 +164,13 @@ class MpcCar {
     VectorX x0_delay = x0;
     // : compensate delay
     // ...
+    // double dt = 0.001;
+    // for (double t = delay_; t > 0; t -= dt) {
+    //   int i = ceil(t / dt_);
+    //   VectorU input = historyInput_[history_length_ - i];
+    //   step(x0_delay, input, dt);
+    // }
+
     return x0_delay;
   }
 
@@ -172,6 +182,7 @@ class MpcCar {
     nh.getParam("track_points_y", track_points_y);
     nh.getParam("desired_v", desired_v_);
     s_.setWayPoints(track_points_x, track_points_y);
+
     // load parameters
     nh.getParam("L", L);  // L代替ll_
     nh.getParam("dt", dt_);
@@ -190,7 +201,6 @@ class MpcCar {
     traj_delay_pub_ = nh.advertise<nav_msgs::Path>("traj_delay", 1);
 
     // TODO: set initial value of Ad, Bd, gd
-    ROS_WARN("1.1");
 
     Ad_.setIdentity();  // Ad for instance
     // ...
@@ -239,7 +249,7 @@ class MpcCar {
       Cu_.coeffRef(i * 2 + 1, i * m + 1) = 1;
       lu_.coeffRef(i * 2 + 1, 0) = -ddelta_max_ * dt_;
       uu_.coeffRef(i * 2 + 1, 0) = ddelta_max_ * dt_;
-      
+
       //?bug#001
       if (i != 0) {
         Cu_.coeffRef(i * 2 + 1, (i - 1) * m + 1) = -1;
@@ -269,17 +279,23 @@ class MpcCar {
     for (int i = 0; i < history_length_; ++i) {
       historyInput_.emplace_back(0, 0);
     }
+    ROS_WARN("init is done!");
   }
 
   int solveQP(const VectorX& x0_observe) {
+    ROS_WARN("sloveqp");
     x0_observe_ = x0_observe;
     historyInput_.pop_front();
     historyInput_.push_back(predictInput_.front());
+
     // 这里看232行代码处更新的ddelta的索引
     lu_.coeffRef(1, 0) = predictInput_.front()(1) - ddelta_max_ * dt_;
+
     uu_.coeffRef(1, 0) = predictInput_.front()(1) + ddelta_max_ * dt_;
+
     VectorX x0 = compensateDelay(x0_observe_);
     // set BB, AA, gg
+
     Eigen::MatrixXd BB, AA, gg;
     BB.setZero(n * N_, m * N_);
     AA.setZero(n * N_, n);
@@ -290,6 +306,7 @@ class MpcCar {
     double last_phi = x0(2);
     Eigen::SparseMatrix<double> qx;
     qx.resize(n * N_, 1);
+    
     for (int i = 0; i < N_; ++i) {
       calLinPoint(s0, phi, v, delta);
       if (phi - last_phi > M_PI) {
@@ -299,6 +316,7 @@ class MpcCar {
       }
       last_phi = phi;
       linearization(phi, v, delta, varepsilon);
+
       // calculate big state-space matrices
       /* *                BB                AA
        * x1    /       B    0  ... 0 \    /   A \
@@ -325,7 +343,7 @@ class MpcCar {
       }
       // TODO: set qx
       Eigen::Vector2d xy = s_(s0);  // reference (x_r, y_r)
-
+     
       // cost function should be represented as follows:
       /* *
        *           /  x1  \T       /  x1  \         /  x1  \
@@ -340,11 +358,29 @@ class MpcCar {
       qx.coeffRef(n * i + 0, 0) = -xy(0);
       qx.coeffRef(n * i + 1, 0) = -xy(1);
       qx.coeffRef(n * i + 2, 0) = -rho_ * phi;
+      //qx.coeffRef(n * i + 0, 0) = -Qx_.coeffRef(n * i + 0, n * i + 0) * xy(0);
+      //qx.coeffRef(n * i + 1, 0) = -Qx_.coeffRef(n * i + 1, n * i + 1) * xy(1);
+      //qx.coeffRef(n * i + 2, 0) = -Qx_.coeffRef(n * i + 2, n * i + 2) * phi;
+      //qx.coeffRef(n * i + 3, 0) = -Qx_.coeffRef(n * i + 3, n * i + 3) * v;
+      qx.coeffRef(n * i + 3, 0) = -rho_ * v;
+      qx.coeffRef(n * i + 4, 0) = -rho_ * delta;
+      //qx.coeffRef(n * i + 4, 0) = -Qx_.coeffRef(n * i + 4, n * i + 4) * delta;
+      //最后一步的末端成本的权重
       if (i == N_ - 1) {
         qx.coeffRef(n * i + 0, 0) *= rhoN_;
         qx.coeffRef(n * i + 1, 0) *= rhoN_;
         qx.coeffRef(n * i + 2, 0) *= rhoN_;
+        qx.coeffRef(n * i + 3, 0) *= rhoN_;
+        qx.coeffRef(n * i + 4, 0) *= rhoN_;
       }
+      // qx.coeffRef(n * i + 0, 0) = -xy(0);
+      // qx.coeffRef(n * i + 1, 0) = -xy(1);
+      // qx.coeffRef(n * i + 2, 0) = -rho_ * phi;
+      // if (i == N_ - 1) {
+      //   qx.coeffRef(n * i + 0, 0) *= rhoN_;
+      //   qx.coeffRef(n * i + 1, 0) *= rhoN_;
+      //   qx.coeffRef(n * i + 2, 0) *= rhoN_;
+      // }
       s0 += desired_v_ * dt_;
       s0 = s0 < s_.arcL() ? s0 : s_.arcL();
     }
@@ -411,12 +447,14 @@ class MpcCar {
 
   void getPredictXU(double t, VectorX& state, VectorU& input) {
     if (t <= dt_) {
+      //state维度
       state = predictState_.front();
       input = predictInput_.front();
       return;
     }
     int horizon = std::floor(t / dt_);
     double dt = t - horizon * dt_;
+    //state维度
     state = predictState_[horizon - 1];
     input = predictInput_[horizon - 1];
     double phi = state(2);

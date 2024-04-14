@@ -6,7 +6,7 @@
 #include <Eigen/Core>
 #include <deque>
 
-typedef Eigen::Matrix<double,5,1> Vector5d;
+typedef Eigen::Matrix<double, 5, 1> Vector5d;
 
 struct Car {
   double L;
@@ -17,7 +17,7 @@ struct Car {
     state = s;
   }
   inline Vector5d diff(const Vector5d& s,
-                              const Eigen::Vector2d& input) const {
+                       const Eigen::Vector2d& input) const {
     Vector5d ds;
     double phi = s(2);
     double v = s(3);
@@ -84,7 +84,7 @@ class Nodelet : public nodelet::Nodelet {
     odom_msg.pose.pose.position.z = 0.0;
     double phi = car.state(2);
     double v = car.state(3);
-    double delta = car.state(4);
+    double delta = car.state(4); 
     odom_msg.pose.pose.orientation.x = 0.0;
     odom_msg.pose.pose.orientation.y = 0.0;
     odom_msg.pose.pose.orientation.z = sin(phi / 2);
@@ -92,13 +92,14 @@ class Nodelet : public nodelet::Nodelet {
 
     odom_msg.twist.twist.linear.x = v * cos(phi) * cos(delta);
     odom_msg.twist.twist.linear.y = v * sin(phi) * cos(delta);
-    odom_msg.twist.twist.linear.z = 0.0;
+    odom_msg.twist.twist.linear.z = delta;
 
     odom_pub_.publish(odom_msg);
   }
 
  public:
   void onInit(void) {
+    ROS_WARN("sim_1");
     ros::NodeHandle nh(getMTPrivateNodeHandle());
     nh.getParam("L", car.L);
     Vector5d initS;
@@ -110,10 +111,11 @@ class Nodelet : public nodelet::Nodelet {
     nh.getParam("delay", delay_);
     input_.setZero();
     car.setInitialState(initS);
-
+    ROS_WARN("sim_2");
     odom_pub_ = nh.advertise<nav_msgs::Odometry>("odom", 1);
     cmd_sub_ = nh.subscribe<car_msgs::CarCmd>("car_cmd", 1, &Nodelet::cmd_callback, this, ros::TransportHints().tcpNoDelay());
     sim_timer_ = nh.createTimer(ros::Duration(1.0 / 400), &Nodelet::timer_callback, this);
+    ROS_WARN("sim_3");
   }
 };
 }  // namespace car_simulator
