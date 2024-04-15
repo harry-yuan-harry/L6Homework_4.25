@@ -32,6 +32,7 @@ struct Car {
     return ds;
   }
 
+// 非線性迭代法
   void step(const Eigen::Vector2d& input, const double dt) {
     // Runge–Kutta
     Vector5d k1 = diff(state, input);
