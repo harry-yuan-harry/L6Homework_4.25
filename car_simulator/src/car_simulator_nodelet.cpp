@@ -93,7 +93,7 @@ class Nodelet : public nodelet::Nodelet {
 
     odom_msg.twist.twist.linear.x = v * cos(phi) * cos(delta);
     odom_msg.twist.twist.linear.y = v * sin(phi) * cos(delta);
-    odom_msg.twist.twist.linear.z = delta;
+    odom_msg.twist.twist.linear.z = 0;
 
     odom_pub_.publish(odom_msg);
   }
@@ -115,6 +115,8 @@ class Nodelet : public nodelet::Nodelet {
     ROS_WARN("sim_2");
     odom_pub_ = nh.advertise<nav_msgs::Odometry>("odom", 1);
     cmd_sub_ = nh.subscribe<car_msgs::CarCmd>("car_cmd", 1, &Nodelet::cmd_callback, this, ros::TransportHints().tcpNoDelay());
+    //输出car_cmd的内容
+    ROS_WARN("car_cmd");
     sim_timer_ = nh.createTimer(ros::Duration(1.0 / 400), &Nodelet::timer_callback, this);
     ROS_WARN("sim_3");
   }

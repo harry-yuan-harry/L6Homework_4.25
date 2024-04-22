@@ -19,6 +19,7 @@ class Nodelet : public nodelet::Nodelet {
 
   void plan_timer_callback(const ros::TimerEvent& event) {
     if (init) {
+      ROS_WARN("plan_time");
       ros::Time t1 = ros::Time::now();
 
       auto ret = mpcPtr_->solveQP(state_);
@@ -41,6 +42,9 @@ class Nodelet : public nodelet::Nodelet {
       msg.a = u(0);
       msg.varepsilon = u(1);
       cmd_pub_.publish(msg);
+      //输出msg
+      std::cout << "msg.a =  " << msg.a << std::endl;
+      std::cout << "msg.varepsilon =  " << msg.varepsilon << std::endl;
       mpcPtr_->visualization();
     }
     return;
@@ -56,7 +60,9 @@ class Nodelet : public nodelet::Nodelet {
     Eigen::Vector2d v(msg->twist.twist.linear.x, msg->twist.twist.linear.y);
     // bug#002
     state_ << x, y, euler.z(), v.norm(), msg->twist.twist.linear.z;
-
+    //这里的state(3),state(4)分别需要是机器人的速度和转向角速度，v.norm()为人的速度，那么当前的里程计信息如何转化为机器人转向角速度
+    
+    
     init = true;
   }
 
