@@ -465,12 +465,14 @@ class MpcCar {
 
   void getPredictXU(double t, VectorX& state, VectorU& input) {
     ROS_WARN("getPredictXU");
+    //这里的dt_取的是0.05；mpcPtr_->getPredictXU(0, x, u);这里调用的时候相当于一直进入if然后return 出去了；
     if (t <= dt_) {
       // state维度
       state = predictState_.front();
       input = predictInput_.front();
       return;
     }
+  
     int horizon = std::floor(t / dt_);
     double dt = t - horizon * dt_;
     // state维度
@@ -486,6 +488,8 @@ class MpcCar {
     state(2) += dt * v / L * sin(delta);
     state(3) += dt * a;
     state(4) += dt * varepsilon;
+    std::cout << "mpc_car_state: " << state.transpose() << std::endl;
+    ROS_WARN("getPredictXU_over");
   }
 
   // visualization

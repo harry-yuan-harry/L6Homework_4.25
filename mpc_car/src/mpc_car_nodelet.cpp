@@ -61,6 +61,7 @@ class Nodelet : public nodelet::Nodelet {
     Eigen::Vector2d v(msg->twist.twist.linear.x, msg->twist.twist.linear.y);
     // bug#002
     state_ << x, y, euler.z(), v.norm(), msg->twist.twist.linear.z;
+    std::cout<<"MPC_odom_state_ = "<<state_.transpose()<<std::endl;
     //这里的state(3),state(4)分别需要是机器人的速度和转向角速度，v.norm()为人的速度，那么当前的里程计信息如何转化为机器人转向角速度
     
     
