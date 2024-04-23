@@ -50,6 +50,7 @@ class Nodelet : public nodelet::Nodelet {
     return;
   }
   void odom_call_back(const nav_msgs::Odometry::ConstPtr& msg) {
+    //ROS_WARN("odom_call_back");
     double x = msg->pose.pose.position.x;
     double y = msg->pose.pose.position.y;
     Eigen::Quaterniond q(msg->pose.pose.orientation.w,

@@ -195,7 +195,7 @@ class MpcCar {
     nh.getParam("ddelta_max", ddelta_max_);
     nh.getParam("delay", delay_);
     history_length_ = std::ceil(delay_ / dt_);
-    // 这三个pub没有起到作用
+    
     ref_pub_ = nh.advertise<nav_msgs::Path>("reference_path", 1);
     traj_pub_ = nh.advertise<nav_msgs::Path>("traj", 1);
     traj_delay_pub_ = nh.advertise<nav_msgs::Path>("traj_delay", 1);
