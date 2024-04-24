@@ -83,8 +83,8 @@ class MpcCar {
     // TODO: set values to Ad_, Bd_, gd_
     // ...
     // set Ad_
-    Ad_ << 1, 0, -v * cos(delta) * sin(phi) * dt_, cos(delta) * cos(phi) * dt_, -v * cos(phi) * sin(delta) * varepsilon * dt_,
-        0, 1, v * cos(delta) * cos(phi) * dt_, cos(delta) * sin(phi) * dt_, -v * sin(phi) * sin(delta) * varepsilon * dt_,
+    Ad_ << 1, 0, -v * cos(delta) * sin(phi) * dt_ * v * sin(delta) / L, cos(delta) * cos(phi) * dt_, -v * cos(phi) * sin(delta) * varepsilon * dt_,
+        0, 1, v * cos(delta) * cos(phi) * dt_ * v * sin(delta) / L, cos(delta) * sin(phi) * dt_, -v * sin(phi) * sin(delta) * varepsilon * dt_,
         0, 0, 1, sin(delta) / L * dt_, (v * cos(delta) * varepsilon) / L * dt_,
         0, 0, 0, 1, 0,
         0, 0, 0, 0, 1;
@@ -195,7 +195,7 @@ class MpcCar {
     nh.getParam("ddelta_max", ddelta_max_);
     nh.getParam("delay", delay_);
     history_length_ = std::ceil(delay_ / dt_);
-    
+
     ref_pub_ = nh.advertise<nav_msgs::Path>("reference_path", 1);
     traj_pub_ = nh.advertise<nav_msgs::Path>("traj", 1);
     traj_delay_pub_ = nh.advertise<nav_msgs::Path>("traj_delay", 1);
@@ -451,9 +451,11 @@ class MpcCar {
       return ret;
     }
     Eigen::VectorXd sol = qpSolver_.getPrimalSol();
+    // std::cout << "sol: " << sol.transpose() << std::endl;
     Eigen::MatrixXd solMat = Eigen::Map<const Eigen::MatrixXd>(sol.data(), m, N_);
     Eigen::VectorXd solState = BB * sol + AA * x0 + gg;
     Eigen::MatrixXd predictMat = Eigen::Map<const Eigen::MatrixXd>(solState.data(), n, N_);
+    std::cout << "predictMat: " << predictMat << std::endl;
 
     for (int i = 0; i < N_; ++i) {
       predictInput_[i] = solMat.col(i);
@@ -465,14 +467,14 @@ class MpcCar {
 
   void getPredictXU(double t, VectorX& state, VectorU& input) {
     ROS_WARN("getPredictXU");
-    //这里的dt_取的是0.05；mpcPtr_->getPredictXU(0, x, u);这里调用的时候相当于一直进入if然后return 出去了；
+    // 这里的dt_取的是0.05；mpcPtr_->getPredictXU(0, x, u);这里调用的时候相当于一直进入if然后return 出去了；
     if (t <= dt_) {
       // state维度
       state = predictState_.front();
       input = predictInput_.front();
       return;
     }
-  
+
     int horizon = std::floor(t / dt_);
     double dt = t - horizon * dt_;
     // state维度

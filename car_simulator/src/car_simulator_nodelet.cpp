@@ -30,7 +30,7 @@ struct Car {
     ds(3) = a;
     ds(4) = varepsilon;
 
-   std::cout << "ds: " << ds.transpose() << std::endl;
+   //std::cout << "ds: " << ds.transpose() << std::endl;
     return ds;
   }
 
@@ -42,7 +42,7 @@ struct Car {
     Vector5d k3 = diff(state + k1 * dt / 2, input);
     Vector5d k4 = diff(state + k3 * dt, input);
     state = state + (k1 + k2 * 2 + k3 * 2 + k4) * dt / 6;
-    std::cout << "step_state: " << state.transpose() << std::endl;
+    //std::cout << "step_state: " << state.transpose() << std::endl;
   }
 };
 
@@ -66,7 +66,7 @@ class Nodelet : public nodelet::Nodelet {
 
   void cmd_callback(const car_msgs::CarCmd::ConstPtr& msg) {
     delayedMsgs_.emplace_back(ros::Time::now(), msg->a, msg->varepsilon);
-    std::cout << "sim_cmd_callback_a: " << msg->a << " sim_cmd_callback_varepsilon: " << msg->varepsilon << std::endl;
+    //std::cout << "sim_cmd_callback_a: " << msg->a << " sim_cmd_callback_varepsilon: " << msg->varepsilon << std::endl;
     // input_(0) = msg->a;
     // input_(1) = msg->varepsilon;
   }
@@ -76,7 +76,7 @@ class Nodelet : public nodelet::Nodelet {
       if ((ros::Time::now() - msg.t).toSec() > delay_) {
         input_(0) = msg.a;
         input_(1) = msg.varepsilon;
-        std::cout << "sim_timer_callback_a: " << msg.a << " sim_timer_callback_varepsilon: " << msg.varepsilon << std::endl;
+        //std::cout << "sim_timer_callback_a: " << msg.a << " sim_timer_callback_varepsilon: " << msg.varepsilon << std::endl;
         delayedMsgs_.pop_front();
       }
     }
@@ -99,9 +99,9 @@ class Nodelet : public nodelet::Nodelet {
     odom_msg.twist.twist.linear.x = v * cos(phi) * cos(delta);
     odom_msg.twist.twist.linear.y = v * sin(phi) * cos(delta);
     odom_msg.twist.twist.linear.z = 0;
-    std::cout <<"odom_msg.phi: "<< phi << std::endl;
-    std::cout <<"odom_msg.v: "<< v << std::endl;
-    std::cout <<"odom_msg.delta: "<< delta << std::endl;
+    //std::cout <<"odom_msg.phi: "<< phi << std::endl;
+    //std::cout <<"odom_msg.v: "<< v << std::endl;
+    //std::cout <<"odom_msg.delta: "<< delta << std::endl;
     odom_pub_.publish(odom_msg);
   }
 
