@@ -98,7 +98,8 @@ class Nodelet : public nodelet::Nodelet {
 
     odom_msg.twist.twist.linear.x = v * cos(phi) * cos(delta);
     odom_msg.twist.twist.linear.y = v * sin(phi) * cos(delta);
-    odom_msg.twist.twist.linear.z = 0;
+    odom_msg.twist.twist.linear.z = v;
+    odom_msg.twist.twist.angular.z = delta;
     //std::cout <<"odom_msg.phi: "<< phi << std::endl;
     //std::cout <<"odom_msg.v: "<< v << std::endl;
     //std::cout <<"odom_msg.delta: "<< delta << std::endl;

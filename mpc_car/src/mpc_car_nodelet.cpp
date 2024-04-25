@@ -21,6 +21,7 @@ class Nodelet : public nodelet::Nodelet {
     if (init) {
       ROS_WARN("plan_time");
       ros::Time t1 = ros::Time::now();
+      std::cout << "MPC_odom_state_ = " << state_.transpose() << std::endl;
 
       auto ret = mpcPtr_->solveQP(state_);
       assert(ret == 1);
@@ -42,7 +43,7 @@ class Nodelet : public nodelet::Nodelet {
       msg.a = u(0);
       msg.varepsilon = u(1);
       cmd_pub_.publish(msg);
-      //输出msg
+      // 输出msg
       std::cout << "msg.a =  " << msg.a << std::endl;
       std::cout << "msg.varepsilon =  " << msg.varepsilon << std::endl;
       mpcPtr_->visualization();
@@ -50,7 +51,7 @@ class Nodelet : public nodelet::Nodelet {
     return;
   }
   void odom_call_back(const nav_msgs::Odometry::ConstPtr& msg) {
-    //ROS_WARN("odom_call_back");
+    // ROS_WARN("odom_call_back");
     double x = msg->pose.pose.position.x;
     double y = msg->pose.pose.position.y;
     Eigen::Quaterniond q(msg->pose.pose.orientation.w,
@@ -59,12 +60,13 @@ class Nodelet : public nodelet::Nodelet {
                          msg->pose.pose.orientation.z);
     Eigen::Vector3d euler = q.toRotationMatrix().eulerAngles(0, 1, 2);
     Eigen::Vector2d v(msg->twist.twist.linear.x, msg->twist.twist.linear.y);
+    double vw = msg->twist.twist.linear.z;
+    double delta = msg->twist.twist.angular.z;
     // bug#002
-    state_ << x, y, euler.z(), v.norm(), msg->twist.twist.linear.z;
-    //std::cout<<"MPC_odom_state_ = "<<state_.transpose()<<std::endl;
-    //这里的state(3),state(4)分别需要是机器人的速度和转向角速度，v.norm()为人的速度，那么当前的里程计信息如何转化为机器人转向角速度
-    
-    
+    state_ << x, y, euler.z(), vw, delta;
+    // std::cout<<"MPC_odom_state_ = "<<state_.transpose()<<std::endl;
+    // 这里的state(3),state(4)分别需要是机器人的速度和转向角速度，v.norm()为人的速度，那么当前的里程计信息如何转化为机器人转向角速度
+
     init = true;
   }
 

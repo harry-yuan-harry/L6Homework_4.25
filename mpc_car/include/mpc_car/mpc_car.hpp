@@ -30,6 +30,7 @@ class MpcCar {
   double rho_;
   int N_;
   double rhoN_;
+  bool init_ = false;
 
   double v_max_, a_max_, delta_max_, ddelta_max_;
   double delay_;
@@ -77,15 +78,14 @@ class MpcCar {
 
   void linearization(const double& phi,
                      const double& v,
-                     const double& delta,
-                     const double& varepsilon) {
+                     const double& delta) {
     // x_{k+1} = Ad * x_{k} + Bd * u_k + gd
     // TODO: set values to Ad_, Bd_, gd_
     // ...
     // set Ad_
-    Ad_ << 1, 0, -v * cos(delta) * sin(phi) * dt_ * v * sin(delta) / L, cos(delta) * cos(phi) * dt_, -v * cos(phi) * sin(delta) * varepsilon * dt_,
-        0, 1, v * cos(delta) * cos(phi) * dt_ * v * sin(delta) / L, cos(delta) * sin(phi) * dt_, -v * sin(phi) * sin(delta) * varepsilon * dt_,
-        0, 0, 1, sin(delta) / L * dt_, (v * cos(delta) * varepsilon) / L * dt_,
+    Ad_ << 1, 0, -v * cos(delta) * sin(phi) * dt_, cos(delta) * cos(phi) * dt_, -v * cos(phi) * sin(delta) * dt_,
+        0, 1, v * cos(delta) * cos(phi) * dt_, cos(delta) * sin(phi) * dt_, -v * sin(phi) * sin(delta) * dt_,
+        0, 0, 1, sin(delta) / L * dt_, (v * cos(delta)) / L * dt_,
         0, 0, 0, 1, 0,
         0, 0, 0, 0, 1;
 
@@ -97,9 +97,9 @@ class MpcCar {
         0, 1 * dt_;
 
     // set gd_
-    gd_ << v * (phi * sin(phi) * cos(delta) + cos(phi) * delta * sin(delta) * varepsilon) * dt_,
-        v * (-phi * cos(phi) * cos(delta) + sin(phi) * delta * sin(delta) * varepsilon) * dt_,
-        -(v * delta * cos(delta) * varepsilon) / L * dt_,
+    gd_ << v * cos(delta) * sin(phi) * phi * dt_ + v * cos(phi) * sin(delta) * delta * dt_,
+        -v * cos(delta) * cos(phi) * phi * dt_ + v * sin(phi) * sin(delta) * delta * dt_,
+        -v * delta * cos(delta) / L * dt_,
         0,
         0;
     return;
@@ -117,7 +117,7 @@ class MpcCar {
     // double y_w = s0.y() + L * sin(phi);
     // double x_w = s0.x() + L * cos(phi);
     v = desired_v_;
-    delta = atan2(L * dphi, 1.0);
+    delta = 0;
     // varepsilon = (ddy_w * dx_w - dy * ddx) / (dx * dx + dy * dy);
   }
 
@@ -309,10 +309,11 @@ class MpcCar {
     AA.setZero(n * N_, n);
     gg.setZero(n * N_, 1);
     double s0 = s_.findS(x0.head(2));
-    double phi, v, varepsilon;
+    double phi, v;
     double delta;
     double last_phi = x0(2);
     double last_delta = x0(4);
+
     Eigen::SparseMatrix<double> qx;
     qx.resize(n * N_, 1);
 
@@ -323,16 +324,39 @@ class MpcCar {
       } else if (phi - last_phi < -M_PI) {
         phi += 2 * M_PI;
       }
-
-      // 给delta加上约束
-      if (delta - last_delta > M_PI) {
+      if(delta - last_delta > M_PI) {
         delta -= 2 * M_PI;
       } else if (delta - last_delta < -M_PI) {
         delta += 2 * M_PI;
       }
-      last_delta = delta;
       last_phi = phi;
-      linearization(phi, v, delta, varepsilon);
+      last_delta = delta;
+      // last_phi = phi;
+      if (init_) {
+        double phii = predictState_[i](2);
+        double deltai = predictState_[i](4);
+        v = predictState_[i](3);
+        if (phii - last_phi > M_PI) {
+          phii -= 2 * M_PI;
+        } else if (phii - last_phi < -M_PI) {
+          phii += 2 * M_PI;
+        }
+        if (deltai - last_delta > M_PI) {
+          deltai -= 2 * M_PI;
+        } else if (deltai - last_delta < -M_PI) {
+          deltai += 2 * M_PI;
+        }
+        last_phi = phii;
+        last_delta = deltai;
+        linearization(phii, v, deltai);
+      } else {
+        ROS_WARN("init_ is false!");
+        linearization(phi, v, delta);
+      }
+
+      // last_delta = delta;
+      // last_phi = phi;
+      // linearization(phi, v, delta);
 
       // calculate big state-space matrices
       /* *                BB                AA
@@ -452,6 +476,7 @@ class MpcCar {
     }
     Eigen::VectorXd sol = qpSolver_.getPrimalSol();
     // std::cout << "sol: " << sol.transpose() << std::endl;
+
     Eigen::MatrixXd solMat = Eigen::Map<const Eigen::MatrixXd>(sol.data(), m, N_);
     Eigen::VectorXd solState = BB * sol + AA * x0 + gg;
     Eigen::MatrixXd predictMat = Eigen::Map<const Eigen::MatrixXd>(solState.data(), n, N_);
@@ -461,8 +486,9 @@ class MpcCar {
       predictInput_[i] = solMat.col(i);
       predictState_[i] = predictMat.col(i);
     }
+    init_ = true;
     return ret;
-    ROS_WARN("sloveqp完成！");
+    // ROS_WARN("sloveqp完成！");
   }
 
   void getPredictXU(double t, VectorX& state, VectorU& input) {
