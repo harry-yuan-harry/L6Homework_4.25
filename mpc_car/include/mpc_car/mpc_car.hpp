@@ -7,6 +7,7 @@
 #include <deque>
 #include <iosqp/iosqp.hpp>
 
+#include "lbfgs_raw.hpp"
 namespace mpc_car {
 
 static constexpr int n = 5;  // state x y phi v delta
@@ -43,6 +44,10 @@ class MpcCar {
   std::vector<VectorX> predictState_;
   std::vector<VectorU> predictInput_;
   std::deque<VectorU> historyInput_;
+
+  // nmpc reference states
+  std::vector<Eigen::VectorXd> reference_states_;
+
   int history_length_;
   VectorX x0_observe_;
 
@@ -324,7 +329,7 @@ class MpcCar {
       } else if (phi - last_phi < -M_PI) {
         phi += 2 * M_PI;
       }
-      if(delta - last_delta > M_PI) {
+      if (delta - last_delta > M_PI) {
         delta -= 2 * M_PI;
       } else if (delta - last_delta < -M_PI) {
         delta += 2 * M_PI;
@@ -518,6 +523,213 @@ class MpcCar {
     state(4) += dt * varepsilon;
     std::cout << "mpc_car_state: " << state.transpose() << std::endl;
     ROS_WARN("getPredictXU_over");
+  }
+
+  // nmpc: Nonlinear Model Predictive Control
+  void forward(const VectorX& xk,
+               const VectorU& uk,
+               VectorX& xk_1) {
+    // const auto& x = xk(0);
+    // const auto& y = xk(1);
+    // xk
+    const auto& phi = xk(2);
+    const auto& v = xk(3);
+    const auto& delta = xk(4);
+    // uk
+    const auto& a = uk(0);
+    const auto& varepsilon = uk(1);
+    xk_1 = xk;
+    xk_1(0) += v * std::cos(phi) * std::cos(delta) * dt_;
+    xk_1(1) += v * std::sin(phi) * std::cos(delta) * dt_;
+    xk_1(2) += v / L * std::sin(delta) * dt_;
+    xk_1(3) += a * dt_;
+    xk_1(4) += varepsilon * dt_;
+  }
+
+  void backward(const VectorX& xk,
+                const VectorU& uk,
+                const VectorX& grad_xk_1,
+                VectorX& grad_xk,
+                VectorU& grad_uk) {
+    // xk
+    // const auto& x = xk(0);
+    // const auto& y = xk(1);
+    const auto& phi = xk(2);
+    const auto& v = xk(3);
+    const auto& delta = xk(4);
+    // uk
+    // const auto& a = uk(0);
+    // const auto& varepsilon = uk(1);
+    // grad_xk_1
+    const auto& grad_x_1 = grad_xk_1(0);
+    const auto& grad_y_1 = grad_xk_1(1);
+    const auto& grad_phi_1 = grad_xk_1(2);
+    const auto& grad_v_1 = grad_xk_1(3);
+    const auto& grad_delta_1 = grad_xk_1(4);
+    // grad_xk
+    // auto& grad_x = grad_xk(0);
+    // auto& grad_y = grad_xk(1);
+    auto& grad_phi = grad_xk(2);
+    auto& grad_v = grad_xk(3);
+    auto& grad_delta = grad_xk(4);
+    auto& grad_a = grad_uk(0);
+    auto& grad_varepsilon = grad_uk(1);
+
+    grad_xk = grad_xk_1;
+    grad_uk.setZero();
+
+    // backward
+    // v  three items
+    grad_v += grad_x_1 * std::cos(phi) * std::cos(delta) * dt_;
+    grad_v += grad_y_1 * std::sin(phi) * std::cos(delta) * dt_;
+    grad_v += grad_phi_1 * std::sin(delta) / L * dt_;
+    // phi two items
+    grad_phi += grad_x_1 * v * (-std::sin(phi)) * std::cos(delta) * dt_;
+    grad_phi += grad_y_1 * v * std::cos(phi) * std::cos(delta) * dt_;
+    // delta three items
+    grad_delta += grad_phi_1 * v / L * std::cos(delta) * dt_;
+    grad_delta += grad_x_1 * v * (-std::sin(delta)) * std::cos(phi) * dt_;
+    grad_delta += grad_y_1 * v * (-std::sin(delta)) * std::sin(phi) * dt_;
+    // input a,varepsilon
+    grad_a += grad_v_1 * dt_;
+    grad_varepsilon += grad_delta_1 * dt_;
+  }
+
+  double box_constrant(const double& x,
+                       const double& l,
+                       const double& u,
+                       double& grad) {
+    double rho = 1e4;
+    double lpen = l - x;
+    double upen = x - u;
+    if (lpen > 0) {
+      double lpen2 = lpen * lpen;
+      grad = -rho * 3 * lpen2;
+      return rho * lpen2 * lpen;
+    } else if (upen > 0) {
+      double upen2 = upen * upen;
+      grad = rho * 3 * upen2;
+      return rho * upen2 * upen;
+    } else {
+      grad = 0;
+      return 0;
+    }
+  }
+
+  double stage_cost_gradient(const int& k,
+                             const VectorX& x,
+                             VectorX& grad_x) {
+    // reference state is 3d(x,y,phi)
+    const Eigen::Vector3d& x_r = reference_states_[k];
+    Eigen::Vector3d dx = x.head(3) - x_r;
+    grad_x.head(3) = 2 * dx;
+    // v, delta
+    grad_x(3) = 0;
+    grad_x(4) = 0;
+    double cost = dx.squaredNorm();
+    // TODO: penalty constraints
+    double grad_v = 0;
+    cost += box_constrant(x(3), -0.1, v_max_, grad_v);
+    grad_x(3) += grad_v;
+    // nqq:added delta constrant
+    double grad_delta = 0;
+    cost += box_constrant(x(4), -delta_max_, delta_max_, grad_delta);
+    grad_x(4) += grad_delta;
+    return cost;
+  }
+
+  static inline double objectiveFunc(void* ptrObj,
+                                     const double* x,
+                                     double* grad,
+                                     const int n) {
+    // std::cout << "\033[32m ************************************** \033[0m" << std::endl;
+    MpcCar& obj = *(MpcCar*)ptrObj;
+    Eigen::Map<const Eigen::MatrixXd> inputs(x, m, obj.N_);
+    Eigen::Map<Eigen::MatrixXd> grad_inputs(grad, m, obj.N_);
+
+    // forward propogate
+    std::vector<VectorX> states(obj.N_ + 1);
+    states[0] = obj.x0_observe_;
+    VectorX xk_1 = obj.x0_observe_;
+    for (int i = 0; i < obj.N_; ++i) {
+      obj.forward(states[i], inputs.col(i), xk_1);
+      states[i + 1] = xk_1;
+    }
+    // cost and gradient of states
+    double total_cost = 0;
+    VectorX grad_xk, grad_xk_1;
+    VectorU grad_uk;
+    grad_xk.setZero();
+    for (int i = obj.N_ - 1; i >= 0; i--) {
+      total_cost += obj.stage_cost_gradient(i, states[i + 1], grad_xk_1);
+      grad_xk_1 = grad_xk_1 + grad_xk;
+      obj.backward(states[i], inputs.col(i), grad_xk_1, grad_xk, grad_uk);
+      grad_inputs.col(i) = grad_uk;
+    }
+    // cost and gradient of inputs
+    for (int i = 0; i < obj.N_; ++i) {
+      double a = inputs.col(i)(0);
+      double varepsilon = inputs.col(i)(1);
+      double grad_a, grad_varepsilon;
+      total_cost += obj.box_constrant(a, -obj.a_max_, obj.a_max_, grad_a);
+      grad_inputs.col(i)(0) += grad_a;
+      total_cost += obj.box_constrant(varepsilon, -obj.ddelta_max_, obj.ddelta_max_, grad_varepsilon);
+      grad_inputs.col(i)(1) += grad_varepsilon;
+    }
+    return total_cost;
+  }
+
+  int solveNMPC(const VectorX& x0_observe) {
+    historyInput_.pop_front();
+    historyInput_.push_back(predictInput_.front());
+    // x0_observe_ = x0_observe;
+    x0_observe_ = compensateDelay(x0_observe);
+    // set reference states
+    double s0 = s_.findS(x0_observe_.head(2));
+    reference_states_.resize(N_);
+    Eigen::Vector2d xy_r;
+    double phi, last_phi = x0_observe_(2);
+    for (int i = 0; i < N_; ++i) {
+      s0 += desired_v_ * dt_;
+      s0 = s0 < s_.arcL() ? s0 : s_.arcL();
+      // calculate desired x,y.phi
+      xy_r = s_(s0);
+      Eigen::Vector2d dxy = s_(s0, 1);
+      phi = std::atan2(dxy.y(), dxy.x());
+      if (phi - last_phi > M_PI) {
+        phi -= 2 * M_PI;
+      } else if (phi - last_phi < -M_PI) {
+        phi += 2 * M_PI;
+      }
+      last_phi = phi;
+      reference_states_[i] = Eigen::Vector3d(xy_r.x(), xy_r.y(), phi);
+    }
+    // lbfgs optimization set initial value
+    double* x = new double[m * N_];
+    Eigen::Map<Eigen::MatrixXd> inputs(x, m, N_);
+    inputs.setZero();
+    lbfgs::lbfgs_parameter_t lbfgs_params;
+    lbfgs::lbfgs_load_default_parameters(&lbfgs_params);
+    lbfgs_params.mem_size = 16;
+    lbfgs_params.past = 3;
+    lbfgs_params.g_epsilon = 0.0;
+    lbfgs_params.min_step = 1e-32;
+    lbfgs_params.delta = 1e-4;
+    lbfgs_params.line_search_type = 0;
+    // lbfgs optimization
+    double minObjective;
+    auto ret = lbfgs::lbfgs_optimize(m * N_, x, &minObjective, &objectiveFunc, nullptr, nullptr, this, &lbfgs_params);
+    std::cout << "\033[32m"
+              << "ret: " << ret << "\033[0m" << std::endl;
+    // set predict states and inputs
+    VectorX xk = x0_observe_, xk_1;
+    for (int i = 0; i < N_; ++i) {
+      predictInput_[i] = inputs.col(i);
+      forward(xk, inputs.col(i), xk_1);
+      predictState_[i] = xk_1;
+      xk = xk_1;
+    }
+    return ret;
   }
 
   // visualization

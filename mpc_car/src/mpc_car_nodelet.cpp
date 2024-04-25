@@ -16,18 +16,25 @@ class Nodelet : public nodelet::Nodelet {
   VectorX state_;
   bool init = false;
   double delay_ = 0.0;
+  bool nmpc_ = false;
 
   void plan_timer_callback(const ros::TimerEvent& event) {
     if (init) {
-      ROS_WARN("plan_time");
-      ros::Time t1 = ros::Time::now();
-      std::cout << "MPC_odom_state_ = " << state_.transpose() << std::endl;
-
-      auto ret = mpcPtr_->solveQP(state_);
+      int ret = 0;
+      if (nmpc_) {
+        ros::Time t1 = ros::Time::now();
+        ret = mpcPtr_->solveNMPC(state_);
+        ros::Time t2 = ros::Time::now();
+        double solve_time = (t2 - t1).toSec();
+        std::cout << "solve nmpc costs: " << 1e3 * solve_time << "ms" << std::endl;
+      } else {
+        ros::Time t1 = ros::Time::now();
+        ret = mpcPtr_->solveQP(state_);
+        ros::Time t2 = ros::Time::now();
+        double solve_time = (t2 - t1).toSec();
+        std::cout << "solve qp costs: " << 1e3 * solve_time << "ms" << std::endl;
+      }
       assert(ret == 1);
-      ros::Time t2 = ros::Time::now();
-      double solve_time = (t2 - t1).toSec();
-      std::cout << "solve qp costs: " << 1e3 * solve_time << "ms" << std::endl;
       // TODO
       car_msgs::CarCmd msg;
       msg.header.frame_id = "world";
@@ -73,18 +80,15 @@ class Nodelet : public nodelet::Nodelet {
  public:
   void onInit(void) {
     ros::NodeHandle nh(getMTPrivateNodeHandle());
-    ROS_WARN("1");
     mpcPtr_ = std::make_shared<MpcCar>(nh);
     double dt = 0;
     nh.getParam("dt", dt);
     nh.getParam("delay", delay_);
+    nh.getParam("nmpc", nmpc_);
 
     plan_timer_ = nh.createTimer(ros::Duration(dt), &Nodelet::plan_timer_callback, this);
-
     odom_sub_ = nh.subscribe<nav_msgs::Odometry>("odom", 1, &Nodelet::odom_call_back, this);
-
     cmd_pub_ = nh.advertise<car_msgs::CarCmd>("car_cmd", 1);
-    ROS_WARN("2");
   }
 };
 }  // namespace mpc_car
