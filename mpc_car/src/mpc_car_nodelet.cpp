@@ -3,8 +3,10 @@
 #include <nodelet/nodelet.h>
 #include <ros/ros.h>
 
-// todo include omniGKFcmd
-// #include "omniGKF_control/omniGKFcmd.h"
+// todo include omniGKFcmd and omniGKFinfo
+#include <omniGKF_control/omniGKFcmd.h>
+
+#include <omniGKF_control/omniGKFinfo.h>
 
 #include <Eigen/Geometry>
 #include <mpc_car/mpc_car.hpp>
@@ -15,17 +17,22 @@ namespace mpc_car
   {
   private:
     std::shared_ptr<MpcCar> mpcPtr_;
+    std::shared_ptr<MpcCar> mpcPtr_onmi;
     ros::Timer plan_timer_;
     ros::Subscriber odom_sub_;
     ros::Publisher cmd_pub_;
+    ros::Subscriber omni_odom_sub_;
+    ros::Publisher cmd_omniGKF_pub_;
+
     VectorX state_;
-    bool init = false;
+    bool init_1 = false;
+    bool init_2 = false;
     double delay_ = 0.0;
     bool nmpc_ = false;
 
     void plan_timer_callback(const ros::TimerEvent &event)
     {
-      if (init)
+      if (init_1 == true && init_2 == true)
       {
         int ret = 0;
         if (nmpc_)
@@ -63,9 +70,13 @@ namespace mpc_car
         cmd_pub_.publish(msg);
 
         // TODO 输出omniGKFcmd
-        // omniGKF_control::omniGKFcmd msg_omniGKF;
-        //  msg_omniGKF.header.frame_id = "world";
-        // msg_omniGKF.header.stamp = ros::Time::now();
+        omniGKF_control::omniGKFcmd msg_omniGKF;
+        msg_omniGKF.header.frame_id = "world";
+        msg_omniGKF.header.stamp = ros::Time::now();
+
+        VectorX x_omniGKF;
+        VectorU u_omniGKF;
+        mpcPtr_onmi->getPredictXU(0, x_omniGKF, u_omniGKF);
 
         // 输出msg
         std::cout << "msg.a =  " << msg.a << std::endl;
@@ -74,9 +85,10 @@ namespace mpc_car
       }
       return;
     }
+
     void odom_call_back(const nav_msgs::Odometry::ConstPtr &msg)
     {
-      // ROS_WARN("odom_call_back");
+      ROS_WARN("odom_call_back");
       double x = msg->pose.pose.position.x;
       double y = msg->pose.pose.position.y;
       Eigen::Quaterniond q(msg->pose.pose.orientation.w,
@@ -85,14 +97,34 @@ namespace mpc_car
                            msg->pose.pose.orientation.z);
       Eigen::Vector3d euler = q.toRotationMatrix().eulerAngles(0, 1, 2);
       Eigen::Vector2d v(msg->twist.twist.linear.x, msg->twist.twist.linear.y);
-      double vw = msg->twist.twist.linear.z;
-      double delta = msg->twist.twist.angular.z;
+      // double vw = msg_omniGKF->velocity[0];
+      // double delta = msg_omniGKF->heading;
       // bug#002
-      state_ << x, y, euler.z(), vw, delta;
+      state_.head(3) << x, y, euler.z();
       // std::cout<<"MPC_odom_state_ = "<<state_.transpose()<<std::endl;
       // 这里的state(3),state(4)分别需要是机器人的速度和转向角速度，v.norm()为人的速度，那么当前的里程计信息如何转化为机器人转向角速度
 
-      init = true;
+      init_1 = true;
+    }
+
+    void omni_odom_call_back(omniGKF_control::omniGKFinfo::ConstPtr &msg_omniGKF)
+    {
+      // ROS_WARN("odom_call_back");
+      // double x = msg->pose.pose.position.x;
+      // double y = msg->pose.pose.position.y;
+      // Eigen::Quaterniond q(msg->pose.pose.orientation.w,
+      //                      msg->pose.pose.orientation.x,
+      //                      msg->pose.pose.orientation.y,
+      //                      msg->pose.pose.orientation.z);
+      // Eigen::Vector3d euler = q.toRotationMatrix().eulerAngles(0, 1, 2);
+      // Eigen::Vector2d v(msg->twist.twist.linear.x, msg->twist.twist.linear.y);
+      double vw = msg_omniGKF->velocity[0];
+      double delta = msg_omniGKF->heading;
+      // bug#002
+      state_.tail(2) <<  vw, delta;
+      
+
+      init_2 = true;
     }
 
   public:
@@ -107,8 +139,10 @@ namespace mpc_car
 
       plan_timer_ = nh.createTimer(ros::Duration(dt), &Nodelet::plan_timer_callback, this);
       odom_sub_ = nh.subscribe<nav_msgs::Odometry>("odom", 1, &Nodelet::odom_call_back, this);
+      omni_odom_sub_ = nh.subscribe<omniGKF_control::omniGKFinfo>("omni_odom", 1, &Nodelet::omni_odom_call_back, this);
       cmd_pub_ = nh.advertise<car_msgs::CarCmd>("car_cmd", 1);
-      // todo cmd_omniGKF_pub_ = nh.advertise<omniGKF_control::omniGKFcmd>("omniGKF_cmd", 1);
+      // todo
+      cmd_omniGKF_pub_ = nh.advertise<omniGKF_control::omniGKFcmd>("omniGKF_cmd", 1);
     }
   };
 } // namespace mpc_car
