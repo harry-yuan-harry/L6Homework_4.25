@@ -11,12 +11,12 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   nodelet
   car_msgs
-  # TODO: Add omniGKF_control
+  omniGKF_control
 )
 
 catkin_package(
   INCLUDE_DIRS include ${EIGEN3_INCLUDE_DIR}
-  CATKIN_DEPENDS roscpp nodelet car_msgs
+  CATKIN_DEPENDS roscpp nodelet car_msgs omniGKF_control
   DEPENDS EIGEN3
 )
 
