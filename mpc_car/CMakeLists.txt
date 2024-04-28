@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   nodelet
   car_msgs
+  # TODO: Add omniGKF_control
 )
 
 catkin_package(
