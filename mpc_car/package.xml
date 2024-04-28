@@ -12,6 +12,7 @@
   <depend>roscpp</depend>
   <depend>nodelet</depend>
   <depend>car_msgs</depend>
+  <depend>omniGKF_control</depend>
 
   <export>
     <nodelet plugin="${prefix}/nodelet_plugin.xml"/>
