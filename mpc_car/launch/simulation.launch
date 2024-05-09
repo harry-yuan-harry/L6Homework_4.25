@@ -10,6 +10,7 @@
   <node pkg="nodelet" type="nodelet" name="mpc_car" args="load mpc_car/Nodelet manager" output="screen">
     <rosparam file="$(find mpc_car)/config/mpc_car.yaml"/>
     <remap from="~odom" to="odom"/>
+    <remap from="~Odometry" to="Odometry"/>
     <!-- <remap from="~omni_odom" to="omni_odom"/> -->
     <remap from="~car_cmd" to="car_cmd"/>
     <remap from="~omniGKFinfo" to="omniGKFinfo"/>
