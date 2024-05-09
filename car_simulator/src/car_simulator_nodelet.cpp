@@ -65,12 +65,14 @@ class Nodelet : public nodelet::Nodelet {
   std::deque<DelayedMsg> delayedMsgs_;
 
   void cmd_callback(const car_msgs::CarCmd::ConstPtr& msg) {
+    //ROS_WARN("car_cmd");
     delayedMsgs_.emplace_back(ros::Time::now(), msg->a, msg->varepsilon);
     //std::cout << "sim_cmd_callback_a: " << msg->a << " sim_cmd_callback_varepsilon: " << msg->varepsilon << std::endl;
     // input_(0) = msg->a;
     // input_(1) = msg->varepsilon;
   }
   void timer_callback(const ros::TimerEvent& event) {
+    
     if (!delayedMsgs_.empty()) {
       auto& msg = delayedMsgs_.front();
       if ((ros::Time::now() - msg.t).toSec() > delay_) {
