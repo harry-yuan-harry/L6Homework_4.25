@@ -11,6 +11,10 @@
 #include <omniGKF_control/omniGKFcmd.h>
 
 #include <omniGKF_control/omniGKFinfo.h>
+// todo include omniGKFcmd and omniGKFinfo
+#include <omniGKF_control/omniGKFcmd.h>
+
+#include <omniGKF_control/omniGKFinfo.h>
 
 #include <Eigen/Geometry>
 #include <mpc_car/mpc_car.hpp>
@@ -26,7 +30,12 @@ namespace mpc_car
     ros::Subscriber odom_sub_head_;
     ros::Subscriber omni_odom_sub_;
 
+    ros::Subscriber odom_sub_head_;
+    ros::Subscriber omni_odom_sub_;
+
     ros::Publisher cmd_pub_;
+    ros::Publisher cmd_omniGKF_pub_;
+
     ros::Publisher cmd_omniGKF_pub_;
 
     VectorX state_;
@@ -39,7 +48,6 @@ namespace mpc_car
 
     void plan_timer_callback(const ros::TimerEvent &event)
     {
-      if (init_1 == true && init_2 == true)
       if (init_1 == true && init_2 == true)
       {
         int ret = 0;
