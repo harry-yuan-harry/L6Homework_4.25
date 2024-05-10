@@ -74,7 +74,9 @@ namespace mpc_car
         omniGKF_control::omniGKFcmd msg_omniGKF;
         msg_omniGKF.header.frame_id = "world";
         msg_omniGKF.header.stamp = ros::Time::now();
-
+        msg_omniGKF.gkf_state = true;
+        msg_omniGKF.a = u(0);
+        msg_omniGKF.varepsilon = u(1);
         VectorX x_omniGKF;
         VectorU u_omniGKF;
         mpcPtr_->getPredictXU(0, x_omniGKF, u_omniGKF);
@@ -171,7 +173,7 @@ namespace mpc_car
       odom_sub_head_ = nh.subscribe<nav_msgs::Odometry>("Odometry", 1, &Nodelet::odom_call_back_head, this);
       // 下面的omni_odom_sub_没有正确的调用，导致omni_odom_call_back函数没有被调用
       omni_odom_sub_ = nh.subscribe<omniGKF_control::omniGKFinfo>("omniGKFinfo", 1, &Nodelet::omni_odom_call_back, this);
-      //rqt_graph显示的是omniGKFinfo_cmd没有发布
+      // rqt_graph显示的是omniGKFinfo_cmd没有发布
       cmd_omniGKF_pub_ = nh.advertise<omniGKF_control::omniGKFcmd>("omniGKFcmd", 1);
     }
   };
