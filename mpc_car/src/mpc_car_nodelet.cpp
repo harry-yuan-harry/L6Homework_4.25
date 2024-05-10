@@ -129,7 +129,7 @@ namespace mpc_car
                            msg->pose.pose.orientation.y,
                            msg->pose.pose.orientation.z);
       Eigen::Vector3d euler = q.toRotationMatrix().eulerAngles(0, 1, 2);
-      Eigen::Vector2d v(msg->twist.twist.linear.x, msg->twist.twist.linear.y);
+      // Eigen::Vector2d v(msg->twist.twist.linear.x, msg->twist.twist.linear.y);
       // double vw = msg_omniGKF->velocity[0];
       // double delta = msg_omniGKF->heading;
       // bug#002
@@ -175,7 +175,7 @@ namespace mpc_car
       cmd_pub_ = nh.advertise<car_msgs::CarCmd>("car_cmd", 1);
 
       // todo
-      odom_sub_head_ = nh.subscribe<nav_msgs::Odometry>("odom", 1, &Nodelet::odom_call_back_head, this);
+      odom_sub_head_ = nh.subscribe<nav_msgs::Odometry>("Odometry", 1, &Nodelet::odom_call_back_head, this);
       // 下面的omni_odom_sub_没有正确的调用，导致omni_odom_call_back函数没有被调用
       omni_odom_sub_ = nh.subscribe<omniGKF_control::omniGKFinfo>("omniGKFinfo", 1, &Nodelet::omni_odom_call_back, this);
       //rqt_graph显示的是omniGKFinfo_cmd没有发布
