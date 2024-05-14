@@ -36,7 +36,7 @@ namespace mpc_car
       if (init_1 == true && init_2 == true)
       {
         int ret = 0;
-        if (nmpc_)
+        if (nmpc_) 
         {
           ros::Time t1 = ros::Time::now();
           ret = mpcPtr_->solveNMPC(state_);
@@ -78,7 +78,7 @@ namespace mpc_car
         msg_omniGKF.a = u(0);
         msg_omniGKF.varepsilon = u(1);
         VectorX x_omniGKF;
-        VectorU u_omniGKF;
+        VectorU u_omniGKF; 
         mpcPtr_->getPredictXU(0, x_omniGKF, u_omniGKF);
         std::cout << "u_omniGKF: " << u_omniGKF.transpose() << std::endl;
         std::cout << "x_omniGKF: " << x_omniGKF.transpose() << std::endl;
