@@ -14,25 +14,25 @@ actual_data = []
 def spline_callback(msg):
     global spline_data
     for pose in msg.poses:
-        spline_data.append([pose.pose.position.x, pose.pose.position.y])
+        spline_data.append([msg.header.stamp.to_sec(),pose.pose.position.x, pose.pose.position.y])
 
 def predict_callback(msg):
     global predict_data
     for pose in msg.poses:
-        predict_data.append([pose.pose.position.x, pose.pose.position.y])
+        predict_data.append([msg.header.stamp.to_sec(),pose.pose.position.x, pose.pose.position.y])
 
 def actual_callback(msg):
     global actual_data
     for pose in msg.poses:
-        actual_data.append([pose.pose.position.x, pose.pose.position.y])
+        actual_data.append([msg.header.stamp.to_sec(),pose.pose.position.x, pose.pose.position.y])
 
 # 初始化ROS节点
 rospy.init_node('trajectory_plot')
 
 # 订阅主题
-rospy.Subscriber('reference_path', Path, spline_callback)
-rospy.Subscriber('traj_delay', Path, predict_callback)
-rospy.Subscriber('traj', Path, actual_callback)
+rospy.Subscriber('mpc_car/reference_path', Path, spline_callback)
+rospy.Subscriber('mpc_car/traj_delay', Path, predict_callback)
+rospy.Subscriber('mpc_car/traj', Path, actual_callback)
 
 rospy.spin()
 
@@ -56,9 +56,9 @@ with open('actual_data.csv', 'w') as f:
 # 创建一个新的图形
 fig = plt.figure()
 
-plt.plot([d[0] for d in spline_data], [d[1] for d in spline_data], label='Spline Trajectory')
-plt.plot([d[0] for d in predict_data], [d[1] for d in predict_data], label='Predicted Trajectory')
-plt.plot([d[0] for d in actual_data], [d[1] for d in actual_data], label='Actual Trajectory')
+plt.plot([d[1] for d in spline_data], [d[2] for d in spline_data], label='Spline Trajectory')
+plt.plot([d[1] for d in predict_data], [d[2] for d in predict_data], label='Predicted Trajectory')
+plt.plot([d[1] for d in actual_data], [d[2] for d in actual_data], label='Actual Trajectory')
 plt.title('Trajectories')
 plt.xlabel('X')
 plt.ylabel('Y')
