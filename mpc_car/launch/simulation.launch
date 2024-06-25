@@ -14,10 +14,10 @@
     <remap from="~car_cmd" to="car_cmd"/>
     <!-- <remap from="~omni_odom" to="omni_odom"/> -->
     <!-- real -->
-    <remap from="~Odometry" to="Odometry"/>
+    <!-- <remap from="~Odometry" to="Odometry"/>
     <remap from="~omniGKFinfo" to="omniGKFinfo"/>
     <remap from="~Odometry" to="Odometry"/>
-    <remap from="~omniGKFcmd" to="omniGKFcmd"/>
+    <remap from="~omniGKFcmd" to="omniGKFcmd"/> -->
   </node>
 
 </launch>
