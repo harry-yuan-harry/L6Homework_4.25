@@ -729,6 +729,18 @@ class MpcCar {
       predictState_[i] = xk_1;
       xk = xk_1;
     }
+
+    // TODO:publish reference states s[0]
+    ros::Publisher ref_state_pub_;
+    ref_state_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("ref_state", 10);
+    geometry_msgs::PoseStamped msg;
+    msg.header.stamp = ros::Time::now();
+    msg.header.frame_id = "world";
+    msg.pose.position.x = reference_states_[0](0);
+    msg.pose.position.y = reference_states_[0](1);
+    msg.pose.position.z = 0.0;
+    ref_state_pub_.publish(msg);
+
     return ret;
   }
 
