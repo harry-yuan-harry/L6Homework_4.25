@@ -739,6 +739,7 @@ class MpcCar {
     msg.header.stamp = ros::Time::now();
     geometry_msgs::PoseStamped p;
     for (double s = 0; s < s_.arcL(); s += 0.01) {
+      p.header.stamp = ros::Time::now();
       p.pose.position.x = s_(s).x();
       p.pose.position.y = s_(s).y();
       p.pose.position.z = 0.0;
@@ -747,6 +748,7 @@ class MpcCar {
     ref_pub_.publish(msg);
     msg.poses.clear();
     for (int i = 0; i < N_; ++i) {
+      p.header.stamp = ros::Time::now();
       p.pose.position.x = predictState_[i](0);
       p.pose.position.y = predictState_[i](1);
       p.pose.position.z = 0.0;
@@ -760,6 +762,7 @@ class MpcCar {
       int i = std::ceil(t / dt_);
       VectorU input = historyInput_[history_length_ - i];
       step(x0_delay, input, dt);
+      p.header.stamp = ros::Time::now();
       p.pose.position.x = x0_delay(0);
       p.pose.position.y = x0_delay(1);
       p.pose.position.z = 0.0;
