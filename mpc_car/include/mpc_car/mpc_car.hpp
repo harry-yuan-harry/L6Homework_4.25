@@ -25,6 +25,7 @@ class MpcCar {
  private:
   ros::NodeHandle nh_;
   ros::Publisher ref_pub_, traj_pub_, traj_delay_pub_;
+  ros::Publisher ref_state_pub_;
 
   double L;  // 将ll_换成了L
   double dt_;
@@ -204,6 +205,7 @@ class MpcCar {
     ref_pub_ = nh.advertise<nav_msgs::Path>("reference_path", 1);
     traj_pub_ = nh.advertise<nav_msgs::Path>("traj", 1);
     traj_delay_pub_ = nh.advertise<nav_msgs::Path>("traj_delay", 1);
+    ref_state_pub_ = nh.advertise<geometry_msgs::PoseStamped>("ref_state", 1);
 
     // TODO: set initial value of Ad, Bd, gd
 
@@ -731,8 +733,7 @@ class MpcCar {
     }
 
     // TODO:publish reference states s[0]
-    ros::Publisher ref_state_pub_;
-    ref_state_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("ref_state", 10);
+
     geometry_msgs::PoseStamped msg;
     msg.header.stamp = ros::Time::now();
     msg.header.frame_id = "world";

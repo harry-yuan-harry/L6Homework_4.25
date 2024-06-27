@@ -2,6 +2,7 @@
 #include <nav_msgs/Odometry.h>
 #include <nodelet/nodelet.h>
 #include <ros/ros.h>
+#include <std_msgs/Float64.h>
 
 // todo include omniGKFcmd and omniGKFinfo
 #include <omniGKF_control/omniGKFcmd.h>
@@ -24,6 +25,7 @@ namespace mpc_car
 
     ros::Publisher cmd_pub_;
     ros::Publisher cmd_omniGKF_pub_;
+    ros::Publisher nmpc_solvetime_pub_;
 
     VectorX state_;
     bool init_1 = false;
@@ -43,6 +45,12 @@ namespace mpc_car
           ros::Time t2 = ros::Time::now();
           double solve_time = (t2 - t1).toSec();
           std::cout << "solve nmpc costs: " << 1e3 * solve_time << "ms" << std::endl;
+          
+          std_msgs::Float64 msg;
+          msg.data = solve_time;
+          nmpc_solvetime_pub_.publish(msg);
+          // ROS_WARN("nmpc_solvetime_pu:");
+
         }
         else
         {
@@ -168,6 +176,7 @@ namespace mpc_car
       plan_timer_ = nh.createTimer(ros::Duration(dt), &Nodelet::plan_timer_callback, this);
       odom_sub_ = nh.subscribe<nav_msgs::Odometry>("odom", 1, &Nodelet::odom_call_back, this);
       cmd_pub_ = nh.advertise<car_msgs::CarCmd>("car_cmd", 1);
+      nmpc_solvetime_pub_ = nh.advertise<std_msgs::Float64>("nmpc_solvetime", 1);
 
       // todo
       odom_sub_head_ = nh.subscribe<nav_msgs::Odometry>("Odometry", 1, &Nodelet::odom_call_back_head, this);
