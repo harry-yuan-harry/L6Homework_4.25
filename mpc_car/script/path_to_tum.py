@@ -69,7 +69,7 @@ def predict_path_callback(msg):
                 pose.pose.orientation.y, 
                 pose.pose.orientation.z, 
                 pose.pose.orientation.w
-        ]
+            ]
             f_tum.write(f"{data[0]} {data[1]} {data[2]} {data[3]} {data[4]} {data[5]} {data[6]} {data[7]}\n")
             writer.writerow(data)
             predict_path_data.append(data)
@@ -125,7 +125,7 @@ fig = plt.figure()
 
 plt.plot([d[1] for d in reference_path_data], [d[2] for d in reference_path_data], label='reference_path Trajectory')
 plt.plot([d[1] for d in predict_path_data], [d[2] for d in predict_path_data], label='Predicted Trajectory')
-plt.plot([d[1] for d in actual_path_data], [d[2] for d in actual_path_data], label='Actual Trajectory')
+# plt.plot([d[1] for d in actual_path_data], [d[2] for d in actual_path_data], label='Actual Trajectory')
 plt.title('Trajectories')
 plt.xlabel('X')
 plt.ylabel('Y')
