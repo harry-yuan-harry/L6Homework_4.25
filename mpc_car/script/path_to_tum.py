@@ -125,7 +125,7 @@ fig = plt.figure()
 
 plt.plot([d[1] for d in reference_path_data], [d[2] for d in reference_path_data], label='reference_path Trajectory')
 plt.plot([d[1] for d in predict_path_data], [d[2] for d in predict_path_data], label='Predicted Trajectory')
-# plt.plot([d[1] for d in actual_path_data], [d[2] for d in actual_path_data], label='Actual Trajectory')
+plt.plot([d[1] for d in actual_path_data], [d[2] for d in actual_path_data], label='Actual Trajectory')
 plt.title('Trajectories')
 plt.xlabel('X')
 plt.ylabel('Y')
