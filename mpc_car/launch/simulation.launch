@@ -15,10 +15,12 @@
     <remap from="~omni_odom" to="omni_odom"/>
     <!-- real -->
     <!-- sim not sub info  -->
-    <!-- <remap from="~omniGKFinfo" to="omniGKFinfo"/>
+    <!-- <remap from="~omniGKFinfo" to="omniGKFinfo"/> -->
+    <!-- <remap from="~Odometry" to="Odometry"/> -->
     <!-- <remap from="~Odometry" to="Odometry"/>
-    <remap from="~Odometry" to="Odometry"/>
     <remap from="~omniGKFcmd" to="omniGKFcmd"/> -->
+    
+
   </node>
 
 </launch>
