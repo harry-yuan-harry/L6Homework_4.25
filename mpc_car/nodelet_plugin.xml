@@ -3,3 +3,9 @@
     <description></description>
   </class>
 </library>
+
+<library path="lib/libpid_car_nodelet">
+  <class name="mpc_car/PidNodelet" type="mpc_car::PidNodelet" base_class_type="nodelet::Nodelet">
+    <description></description>
+  </class>
+</library>

@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   nodelet
   car_msgs
   omniGKF_control
+  serial
 )
 
 catkin_package(
@@ -36,5 +37,17 @@ target_link_libraries(${PROJECT_NAME}_nodelet
 )
 
 add_dependencies(${PROJECT_NAME}_nodelet
+  ${catkin_EXPORTED_TARGETS}
+)
+
+add_library(pid_car_nodelet
+  src/pid_car_nodelet.cpp
+)
+
+target_link_libraries(pid_car_nodelet
+  ${catkin_LIBRARIES}
+)
+
+add_dependencies(pid_car_nodelet
   ${catkin_EXPORTED_TARGETS}
 )
