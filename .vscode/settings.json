@@ -75,6 +75,7 @@
         "variant": "cpp",
         "bit": "cpp",
         "csignal": "cpp",
-        "any": "cpp"
+        "any": "cpp",
+        "*.ipp": "cpp"
     }
 }

@@ -1,17 +1,17 @@
 <launch>
 
-  <!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(find car_simulator)/config/rviz_sim.rviz"> -->
-  <!-- </node> -->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find car_simulator)/config/rviz_sim.rviz">
+  </node>
 
   <node pkg="nodelet" type="nodelet" name="manager" args="manager" output="screen">
     <param name="num_worker_threads" value="4"/>
   </node>
-  <!-- <include file="$(find car_simulator)/launch/car_simulator.launch"/> -->
+  <include file="$(find car_simulator)/launch/car_simulator.launch"/>
   <node pkg="nodelet" type="nodelet" name="pid_car" args="load mpc_car/PidNodelet manager" output="screen">
-    <rosparam file="$(find mpc_car)/config/mpc_car.yaml"/>
+    <rosparam file="$(find mpc_car)/config/pid_car.yaml"/>
     <!-- sim -->
-    <!-- <remap from="~odom" to="odom"/>
-    <remap from="~car_cmd" to="car_cmd"/>
+    <remap from="~odom" to="odom"/>
+    <!-- <remap from="~car_cmd" to="car_cmd"/>
     <remap from="~omni_odom" to="omni_odom"/> -->
     <!-- real -->
     <!-- sim not sub info  -->
